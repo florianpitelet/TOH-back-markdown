@@ -170,16 +170,19 @@ On va etre prêt pour mettre en place..
 
 Le deroulement d'un crud, dans le cas d'une application web comme la notre, se déroule en plusieurs etapes:
 
-- Coté FRONT, une action envoie une requete http sous forme d'url
-- On la reçoit côté BACK via le **controleur**, qui va transmetre le necessaire à un **service** qui demande au **Repository** de recuperer les données en DB.
-- Les données récupéres, on refait le chemin inverse. le controleur BACK renvoie ce dont le controleur du  FRONT a besoin pour ses propres traitements, ses propres services.
+- Coté FRONT, une action envoie une requete http sous forme d'url.
+- On la reçoit côté BACK via le **controleur**, qui va transmetre le necessaire à un **service**. Le service va implementer les fonctions d'une Interface **HeroRepository**, qui étend elle-même la classe **JpaRepositoty**..
+- HeroRepository beneficie donc des fonctions toutes pretes de JPA en rapport avec les manipulations dans la DB. Et comme toute interface, elle peut declarer ses propres méthodes.
+- Les données récupérées, on refait le chemin inverse. le controleur BACK renvoie ce dont le controleur du  FRONT a besoin pour ses propres traitements, ses propres services.
 
-Pour bien comprendre la relation entre controleur et service, on va pas coder les classes en entier d'un coup, mais voir, pour chaque action du Crud, ce qui se passe.
-On peut d'ors et deja creer une classe HeroController dans un package Controller, et une classe HeroService dans son package Service. Comprenons ce qui se passe et aprés on code.
 
-# 7- cRud
 
-Notre base de données comporte déjà quelques infos, nous allons pouvoir aller les chercher ( le R de CRUD, Read).
+
+# 7- Le controlleur (HeroControler)
+
+Le controlleur propose les points d'entrées de notre Front et des requetes que ce dernier apporte. On peut imaginer un messager, à la croisée de plusieurs chemins, qui, à la reception d'une requete, prend la bonne voie pour aller chercher le service adapté.
+
+Notre base de données comporte déjà quelques infos, nous allons pouvoir faire le CRUD dessus, tout d'abord en allant toutes les chercher ( le R de CRUD, Read).
 
 Coté controleur (HeroControler), voilà ce qui va se passer niveau code:
 
@@ -221,14 +224,166 @@ Côté controlleur (HeroController):
     
 même structure ici.
 - Une annotation correspondant à une requete de type GET, associée à une URL.
-la particularité de cette URL est qu'elle fait reference à une id dynamique, qui correspondra à celle de l'objet requeté côté front une id dynamique est passée entre crochets
+la particularité de cette URL est qu'elle fait reference à une id dynamique, qui correspondra à celle de l'objet requeté côté FRONT. Une id dynamique est passée entre crochets.
 
-- notre fonction va renvoyer un ResponseEntity egalement mais celui-ci ne contiendra qu'un seul objet de type Hero. Puiqu'on doit trouver le héros correspondant à son id dans la DB, on passe l'id de l'URL en parametre de notre fonction.l'annotation **@PathVariable("id")** indique que l'id est celle passée via l'URL.
-- on appel la fonction du service correspondante, toujours en passant l'id et on stock son resultat dans une variable de type Hero
-- celle-ci est emballée avec un status http ok dans un Response Entity
+- notre fonction va renvoyer un ResponseEntity egalement mais celui-ci ne contiendra qu'un seul objet de type Hero. Puiqu'on doit trouver le héros correspondant à son id dans la DB, on passe l'id de l'URL en parametre de notre fonction. l'annotation **@PathVariable("id")** indique que l'id est celle passée via l'URL.
+- on appel la fonction du service correspondante, toujours en passant l'id et on stock son resultat dans une variable de type Hero.
+- celle-ci est emballée avec un status http ok au sein d'un Response Entity.
 
 
-Côté service (HeroService)
+Côté service (HeroService):
+
+Idem, on appel une fonction du service ( findHeroById(id) ) qui appel une fonction du Repository. La particularité dans ce cas, c'est qu'on ne fait pas appel à une fonction toute prete du Repository, mais une fonction "maison". La raison pour laquelle on fait ça est que la fonction toute prete du Repository ne sait pas qu'elle doit renvoyer un objet de type Hero. On crée donc une fonction adaptée qui renvoit un objet de type Hero qui pourra etre recuperée par notre Front, à l'autre bout de la chaine. C'est une des force de JPA, qui propose des fonctions "clé en main" mais offre aussi la possibilite de créer ses propres fonctions adaptées à ses besoins.
+
+# 9- crUd, Update ( C'est plutôt un edit en vrai, mais bon )
+
+Modifions un élément de notre DB. Côté controlleur (HeroControler):
+
+    @PutMapping("/update")
+    public ResponseEntity<Hero> updateHero(@RequestBody Hero hero){
+      Hero updatedHero = heroService.updateHero(hero);
+      return new ResponseEntity<>(updatedHero, HttpStatus.CREATED);
+    }
+
+Même punition.
+- Une annotation adaptée ( ici de type PUT, avec une URL qui va bien ).
+- notre fonction prend en parametre le hero, sélectionné côté FRONT, que l'on va éditer. Notez la présence d'une nouvelle annotation **@RequestBody** qui indique que la requete amène un objet avec toutes ses proprietés, car on ne sait pas à l'avance la ou lesquelles on va modifier.
+- On appele la fonction updateHero(hero) du service qui appel la fonction toute prete du Repository, save(hero). on stock le héros modifié dans une variable locale.
+- on renvoit cette variable et son contenu avec un http status OK.
+
+# 10- cruD, Delete
+
+Vous commencez à prendre le pli peut-etre:
+
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Hero> deleteHero(@PathVariable("id") Long id){
+      heroService.deleteHeroById(id);
+      return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+Comme pour le find, on trouve le heros à effacer grâce à son id, donc on la passe dynamiquement dans l'URL. Notez aussi le type de l'annotation.
+le service appel sa fonction delete qui appele celle du Repository.
+
+# 11- Crud, Create
+
+Bon mais c'est plus sympa de créer des heros que de les supprimer non? 
+
+    @PostMapping("/add")
+    public ResponseEntity<Hero> addHero(@RequestBody Hero hero){
+      Hero newHero = heroService.addHero(hero);
+      return new ResponseEntity<>(newHero, HttpStatus.CREATED);
+    }
+
+Une annotation de type POST, l'URL qui va bien. le service appel son add, qui appel le save du repository. Mais pas si vite!
+Car si on crée un Heros il lui faut un nom et un pouvoir, ce sont ses proprietés, et, normalement, côté FRONT on a surement rempli un formulaire avec ces infos là.
+Comment vont-elles arriver jusu'au repository?
+Rappelez vous, l'annotation @RequestBody nous envoit un Heros complet. Celui-ci passe dans notre service et c'est là qu'on va definir les proprietés de notre héros.
+
+la methode addHero(hero) dans HeroService:
+
+    public Hero addHero(Hero hero) {
+        hero.setNom(hero.getNom());
+        hero.setPouvoir(hero.getPouvoir());
+        
+        return HeroRepository.save(hero);
+      }
+
+Que se pase-t'il ? on utilise les getters et setters de notre classe Hero ( depuis le temps qu'il ne servaient à rien ils devaient s'ennuyer ) tout simplement, puis on utilise la methode save() du repository, à laquelle on passe le nouveau héros tout frais. C'est ce nouveau heros qui sera renvoyé en FRONT.
+
+
+# 12- Bilan
+
+On constate que JPA, avec sa classe JpaRepository nous facilite la vie avec des methodes toute pretes pour gerer les principales fonctions liées au CRUD. Il est aussi suffisament souple pour nous permettre de surcharger ses fonctions ou en créer des maisons adaptées à nos besoins. C'est l'avantage énorme que nous apporte les **interfaces**.
+
+Pourquoi avoir besoin d'un couche service?
+
+La couche service va faire du traitement et du controle de données en amont et en aval du repository. dans le cas d'un Add, il prepare l'objet avant qu'il soit enregistré en DB. la couche service nous permet de faire de la gestion d'exception, et donc d'ameliorer la robustesse et la sécurité de notre application, comme nous allons le voir dans le prochaine exemple.
+
+# 13- Quand ça marche c'est bien mais quand ça marche pas?
+
+Reprenons l'exemple d'un aspect du CRUD, le "find by id". on souhaite récuperer un élement en appelant son Id.
+
+IL peut arriver:
+1- que l'on recherche un élément qui n'existe pas
+2- ou qui ne soit pas du bon type.
+Si l'on regarde notre fonction findHeroById(id) dans HeroRepo, elle renvoit un objet de type Hero. donc dans le premier cas, la fonction ne renverra pas un Hero vide, il y a un risque d'erreur. Dans le second cas, il y aura une erreur.
+
+Une solution serait d'utiliser un objet **Optionnal** contenant un objet de type Hero. Comme son nom l'indique, un objet Optionnal comprendra qu'il n'est pas necessaire d'obtenir à tout prix un objet Hero. Cela nous permet par la suite, dans la fonction findHeroById(Long id) de **HeroService**, de surveiller une eventuelle exception et donc d'ajouter un comportement adapté aux 2 cas présentés precedemment.
+
+la nouvelle fonction findHeroById(id) dand HeroRepo:
+
+    Optional<Hero> findHeroById(Long id);
+
+
+
+la nouvelle fonction findHeroById(Long id) de HeroService:
+
+    public Hero findHeroById(Long id) { return HeroRepository.findHeroById(id)
+            .orElseThrow( () -> new HeroNotFoundException("Hero by id not found"));
+      }
+
+Ici à notre return on a ajouter une fonction qui va creer une instance de la classe HeroNotFoundException(message: string). Créons cette classe dés maintenant dans un package nommé **Exception**, elle est tres simple:
+
+  <package racine>.exception;
+
+  public class HeroNotFoundException extends RuntimeException {
+
+    public HeroNotFoundException(String message) {
+      super(message);
+    }
+  }
+
+
+# 14- Bilan
+
+Voilà à quoi devrait resembler notre projet BACK. Observez bien comment sont formées nos classe HeroControler, HeroService et HeroRepo.
+(lien vers le repo du projet back).
+
+*HeroControler:*
+
+Les points importants à noter. Il y a deux annotions qui precedent la declaration de notre classe.
+
+@RestController: Elle indique à Spring que cette classe est un controleur de type REST, qui va gérer la reception d'URL et appeler les services adaptés.
+
+@RequestMapping("/hero"): Elle va definir la racine des URL liées aux opérations CRUD. On idique au controlleur qu'il attend les URL suivantes:
+
+http://localhost:8080/hero/...
+
+http://localhost:8080/hero/all -> récuperation de tous les héros
+http://localhost:8080/hero/find/{id} ->récupération d'un héros
+http://localhost:8080/hero/add -> ajout d'un héros
+http://localhost:8080/hero/update -> edition d'un héros
+http://localhost:8080/hero/delet/{id} -> suppression d'un héros
+
+on declare un objet de type HeroService.
+
+dans le constructeur de notre classe HeroControler nous passons en paramétre l'objet de type HeroService, que l'on va ensuite créer. L'annotation @Autowirred indique à Spring qu'il doit injecter le service dans le controlleur.
+
+*HeroService:*
+
+Une annotaion @Service avant la déclaration de la classe indique qu'il s'agit d'un service.
+On declare un objet de type HeroRepository.
+@Autowirred avant le constructeur pour indiquer à la classe qu'on lui injecte HeroRepository.
+on passe l'objet HeroRepository en parametre du constructeur et on l'instancie.
+
+
+
+# 14- Aller plus loin
+
+Nous avons désormais un BACK fonctionnel, qui si tout va bien, est raccordé à notre FRONT. Que fait notre application ? Nous affichons un ensemble de héros ainsi que leurs nom et pouvoir. On peut ajouter, éditer, ou supprimer un héros.
+
+
+
+Une fonctionnalité qui serait interessante à implementer serait de pouvoir créer une équipe de héros, qui aurait ses propres caractéristiques.
+Comment cela pourrait se traduire côté BACK?
+
+Niveau DB, il faudra ajouter une table Equipe avec une id en clé primaire et un nom.
+Dans la table Hero, il faudra ajouter une clé étrangere lié à l'id de la table equipe.
+
+Au niveau de notre projet nous allons créer une nouvelle entité Equipe qui aura son propre CRUD, et donc son propre controlleur et son propre service.
+
+
+
 
 
 
