@@ -367,6 +367,46 @@ On declare un objet de type HeroRepository.
 on passe l'objet HeroRepository en parametre du constructeur et on l'instancie.
 
 
+# 14- Ca se "CORS"
+
+Vous avez un back et front qui marche mais L'application à ce stade n'est pas encore 100%fonctionnelle. Pourquoi?
+
+Si vous êtes aussi impatient que moi vous avez sans doute déja lancé votre back et votre front pour tout tester, cependant il y a un pépin.
+ouvrons notre front dans un navigateur internet. Affichons les outils de devellopement de ce navigateur. Dans l'onglet Console, nous pouvons observer ce qui va se passser.
+Testons une fonctionnalité, comme un ajout de héros par exemple. Dans la console vous devriez voir quelquechose de ce genre s'afficher:
+
+    Access to XMLHttpRequest at 'http://localhost:8080/hero/add' from origin 'http://localhost:4200' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+
+Le probléme est le suivant: Notre FRONT est situé en localhost:4200 et notre Back est situé en localhost:8080. Pour des raisons de sécurité les navigateurs internet empechent les requetes de passer d'un domain à un autre. Cela evite qu'un site malveillant situé sur un domaine puisse interagir avec le sitre de votre banque sur situé sur autre domaine. Logique, mais cela nous empeche de travailler.
+
+La solution: Indiquer à Spring que l'on va autoriser les échanges entre nos deux domaines. Pour cela on va injecter du code dans la classe pricipale de notre projet BACK.
+ Alors là il va falloir me faire confiance et juste coller cette portion de code dans la classe principale:
+
+    @Bean
+	public CorsFilter corsFilter() {
+		CorsConfiguration corsConfiguration = new CorsConfiguration();
+		corsConfiguration.setAllowCredentials(true);
+		corsConfiguration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
+		corsConfiguration.setAllowedHeaders(Arrays.asList("Origin", "Access-Control-Allow-Origin", "Content-Type",
+				"Accept", "Authorization", "Origin, Accept", "X-Requested-With",
+				"Access-Control-Request-Method", "Access-Control-Request-Headers"));
+		corsConfiguration.setExposedHeaders(Arrays.asList("Origin", "Content-Type", "Accept", "Authorization",
+				"Access-Control-Allow-Origin", "Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
+		corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();
+		urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", corsConfiguration);
+		return new CorsFilter(urlBasedCorsConfigurationSource);
+	}
+
+
+Notons à la ligne:
+
+     corsConfiguration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
+
+on met l'adresse de notre FRONT. Voilà on peut maintenant communiquer sans soucis entre FRONT et BACK.
+
+
+
 
 # 14- Aller plus loin
 
