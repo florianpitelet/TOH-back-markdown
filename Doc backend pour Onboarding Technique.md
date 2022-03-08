@@ -1,28 +1,28 @@
-﻿# Tour Of Heroes Backend -
+# Tour Of Heroes Backend -
 ## Création d'un CRUD côté Back .
 
 ---
 
 ## Table des matières
-[1-Preparation de l'environnement de travail](#1)
-[2-Organisation du projet](#2)
-[3-JPA, le point de départ du backend](#3)
-[4-Les données](#4)
-[5-Branchement de Spring à la base de données](#5)
-[6-Test](#6)
-[7-Le CRUD](#7)
-[8-Le contrôleur (HeroControler)](#8)
-[9-c**R**ud](#9)
-[10-c**R**ud , la suite](#10)
-[11- cru**D**, Delete](#11)
-[12-**C**rud, Create](#12)
-[13-cr**U**d, update](#13)
-[14-Premier bilan](#14)
-[15-Quand ça marche c'est bien mais quand ça marche pas?](#15)
-[16-Conclusion?](#16)
-[17-Attention ça se "**CORS**"](#17)
-[18-Aller plus loin](#18)
-[19-JPA à la rescousse!](#19)
+- [1-Preparation de l'environnement de travail](#1)
+- [2-Organisation du projet](#2)
+- [3-JPA, le point de départ du backend](#3)
+- [4-Les données](#4)
+- [5-Branchement de Spring à la base de données](#5)
+- [6-Test](#6)
+- [7-Le CRUD](#7)
+- [8-Le contrôleur (HeroControler)](#8)
+- [9-c**R**ud](#9)
+- [10-c**R**ud , la suite](#10)
+- [11- cru**D**, Delete](#11)
+- [12-**C**rud, Create](#12)
+- [13-cr**U**d, update](#13)
+- [14-Premier bilan](#14)
+- [15-Quand ça marche c'est bien mais quand ça marche pas?](#15)
+- [16-Conclusion?](#16)
+- [17-Attention ça se "**CORS**"](#17)
+- [18-Aller plus loin](#18)
+- [19-JPA à la rescousse!](#19)
 
 ---
 
@@ -317,9 +317,22 @@ La méthode addHero(hero) dans HeroService :
 Que se passe-t-il ? on utilise les getters et setters de notre classe Hero (depuis le temps qu’ils ne servaient à rien ils devaient s’ennuyer) tout simplement, puis on utilise la méthode save () du repository, à laquelle on passe le nouveau héros tout frais. C'est ce nouveau héros qui sera renvoyé en FRONT.
 
 ### 13-crUd, update{#13}
----
-todo
----
+Pour éditer un héros on va faire appelle à la methode save() du repository, via HeroService encore une fois. 
+
+    @PutMapping("/update")
+public ResponseEntity<Hero> updateHero(@RequestBody Hero hero){
+	Hero updatedHero = heroService.updateHero(hero);
+	return new ResponseEntity<>(updatedHero, HttpStatus.OK);
+}
+
+Dans ce cas on va chercher un objet Hero complet et non pas juste son Id. En effet, côté, FRONT, on peut imaginer que l'utilisateur va remplir un formulaire pre-rempli avec les infos d'un Héros selectionné. Il va ensuite mettre à jour les champs qui l'interessent. Enfin le FRONT va transmettre au BACK l'objet mofifié entier. Le Front va sauvagerder cet objet en DB. JPA reconnait l'Id du héros et donc update celui-ci au lieu de faire un ajout.
+
+Le code côté HeroService :
+
+    	public Hero updateHero(Hero hero) {
+		return HeroRepository.save(hero);
+	}
+
 
 ### 14- Premier bilan{#14}
 
@@ -559,11 +572,4 @@ table enfant:
 
 
 
-
-
-
-
-
-
-
-    
+To Be Continued...
