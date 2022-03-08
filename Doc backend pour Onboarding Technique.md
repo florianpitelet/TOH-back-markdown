@@ -136,8 +136,10 @@ Il est temps de définir notre héros. Créons une classe **Hero** dans un packa
         
 Remarquons que notre classe à quelques termes un peu etranges. Ces instructions précédées de @ s'appelent des **annotations**. Placées avant ou aprés l'élément ciblé, elles informent Spring que ce sont des éléments particuliers. Spring les prend ainsi en charge et travail dessus en coulisses.
 
-**@entity**:
-**@Id @GeneratedValue** :
+- **@entity**: Annonce à JPA que la classe est une entité. Cela se traduit par la création d'une table en Base de données, si celle-ci n'existe pas déjà.
+- **@Id @GeneratedValue** : On declare le champ suivant l'annotation comme étant une Id générée, gérée et incrémentée automatiquement.
+
+C'est une des forces de JPA, qui va modifier la DB liée au projet via le code. Pour être précis, un module dédié, Hibernate en l'occurence, qui va se charger d'interpreter ces annotations et de générer les requêtes SQL.
 
 Sinon rien de neuf. Un constructeur (attention toutefois, pas d'id dans le constructeur, c'est JPA qui va le gérer.), des getters/setters, une fonction **hasCode** pour faire bonne figure et un **toString()** au cas où.
 
@@ -162,7 +164,7 @@ Nous pouvons utiliser DBeaver pour la créer, avec un script tel que celui-ci pa
         (4, 'Diablo', 'Peut se teleporter'),
         (5, 'Rogue', 'Absorbe les pouvoirs d\'autrui'),
         (6, 'Jubilee', 'Tire des feux d\'artifices'),
-        (7, 'Juggernaut', 'I\'m the juggernaut, bitch!'),
+        (7, 'Juggernaut', 'I\'m the juggernaut, b***h!'),
         (8, 'Pr Xavier', 'Télépathe'),
         COMMIT;
         
@@ -492,7 +494,7 @@ Classe Parent (Abrégée pour une meilleure lisibilité) :
     public class Parent {
 
     @OneToMany(mappedBy = "parent")
-    private List<Enfant> enfants;
+    private Set<Enfant> listeEnfants = new HashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -501,14 +503,27 @@ Classe Parent (Abrégée pour une meilleure lisibilité) :
 
     private String nom;
 
-
+    //Constructeur vide
     public Parent() {
+    }
+
+    //Second constructeur
+    public Parent(Long id, String nom){
+        super();
+        this.id = id;
+        this.nom = nom;
+
     }
 
 
         //Getters et Setters
-        //...
-        //...
+        // pour id
+        // pour nom
+        // Et aussi pour listeEnfants-> 
+        
+        public Set<Enfant> getListeEnfants(){
+            return listeEnfants
+          }
     }
 
 
@@ -517,6 +532,8 @@ Ce sont les annotations qui vont "habiller" notre classe et informer JPA de leur
 - @Entity: déclare l'entité
 - @OneToMany(mapedBy = ""): On met en place la relation avec une future table enfant (qu’on va décrire plus loin), en associant cette annotation avec une collection d'objets de type Enfant.
 - @Id, @GeneatedValue(...), @Column se chargent de déclarer une colonne id  auto incrémentée non nullable et non modifiable.
+
+---
 
 La classe Enfant:
 
@@ -538,14 +555,29 @@ La classe Enfant:
     private String nom;
     private String prénom;
 
-    @ManyToOne
-    @JoinColumn(name = "parent_id")
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "parent_id", referencedColumn = "id")
     private Parent parent;
 
-        public Enfant() {}
+        //constructeur vide
+        public Enfant() { super(); }
+
+        //Second constructeur
+        public Hero(long id, String nom, String pouvoir, Team team) {
+          super();
+          this.id = id;
+          this.nom = nom;
+          this.pouvoir = pouvoir;
+          this.team = team;
+    	}
+
         
 
         //Getters et Setters
+        // et aussi un getter pour le parent déclaré plus haut:
+            public Parent getParent() {
+              return parent;
+            }
     }
 
 
@@ -572,4 +604,153 @@ table enfant:
 
 
 
-To Be Continued...
+# 20- Mise à jour des entités Team et Hero
+
+Les classes Team et Hero devront donc ressembler à cela désormais.
+
+Classe Team (équivalent de la classe Parent):
+      package com.pitchup.heromanager.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.OneToMany;
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+@Entity
+public class Team implements Serializable {
+
+
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(nullable = false, updatable = false)
+    private Long id;
+    private String nom;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "team")
+    private Set<Hero> heroMembers = new HashSet<>();
+
+
+    public Team() { super();}
+
+    public Team(Long id, String nom){
+        super();
+        this.id = id;
+        this.nom = nom;
+
+    }
+
+    public long getId() { return id; }
+    public void setId(Long id){ this.id = id; }
+
+    public String getNom(){ return nom; }
+    public void setNom(String nom){ this.nom = nom;}
+
+    public Set<Hero> getHeroMembers() {
+        return heroMembers;
+    }
+
+
+    @Override
+    public String toString() {return "Team [id=" + id + ", nom=" + nom + "]";}
+
+
+}
+
+---
+
+Classe Hero (équivalent de la classe Enfant):
+      package com.pitchup.heromanager.model;
+
+import java.io.Serializable;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+
+@Entity
+public class Hero implements Serializable {
+
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(nullable = false, updatable = false)
+	private long id;
+
+	private String nom;
+	private String pouvoir;
+
+
+	@ManyToOne(cascade = CascadeType.ALL)
+	@JoinColumn(name = "team_id", referencedColumnName = "id")
+	private Team team;
+
+
+
+	public Hero() {
+		super();
+
+	}
+
+	public Hero(long id, String nom, String pouvoir, Team team) {
+		super();
+		this.id = id;
+		this.nom = nom;
+		this.pouvoir = pouvoir;
+		this.team = team;
+
+
+	}
+
+	public long getId() {
+		return id;
+	}
+
+	public void setId(long id) {
+		this.id = id;
+	}
+
+	public String getNom() {
+		return nom;
+	}
+
+	public void setNom(String nom) {
+		this.nom = nom;
+	}
+
+	public String getPouvoir() {
+		return pouvoir;
+	}
+
+	public void setPouvoir(String pouvoir) {
+		this.pouvoir = pouvoir;
+	}
+
+
+	public Team getTeam() {
+		return team;
+	}
+
+	
+	@Override
+	public String toString() {
+		return "Hero [id=" + id + ", nom=" + nom + ", pouvoir=" + pouvoir + ']';
+	}
+
+}
+
+
