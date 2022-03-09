@@ -625,6 +625,7 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
+@Table(name= "team")
 public class Team implements Serializable {
 
 
@@ -633,20 +634,21 @@ public class Team implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(nullable = false, updatable = false)
     private Long id;
+
+    @Column(name = "nom")
     private String nom;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "team")
-    private Set<Hero> heroMembers = new HashSet<>();
+    
+    @OneToMany(cascade = CascadeType.ALL)
+    @JoinColumn(name = "team_id", referencedColumnName = "id")
+    private List<Hero> heroList = new ArrayList<>();
 
 
     public Team() { super();}
 
     public Team(Long id, String nom){
         super();
-        this.id = id;
         this.nom = nom;
-
     }
 
     public long getId() { return id; }
@@ -655,10 +657,13 @@ public class Team implements Serializable {
     public String getNom(){ return nom; }
     public void setNom(String nom){ this.nom = nom;}
 
-    public Set<Hero> getHeroMembers() {
-        return heroMembers;
+    public List<Hero> getHeroList() {
+        return heroList;
     }
 
+    public void setHeroList( List<Hero> heroList){
+        this.heroList = heroList;
+    }
 
     @Override
     public String toString() {return "Team [id=" + id + ", nom=" + nom + "]";}
@@ -683,6 +688,7 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 
 @Entity
+@Table(name = "hero")
 public class Hero implements Serializable {
 
 
@@ -695,8 +701,7 @@ public class Hero implements Serializable {
 	private String pouvoir;
 
 
-	@ManyToOne(cascade = CascadeType.ALL)
-	@JoinColumn(name = "team_id", referencedColumnName = "id")
+	@ManyToOne
 	private Team team;
 
 
@@ -708,12 +713,9 @@ public class Hero implements Serializable {
 
 	public Hero(long id, String nom, String pouvoir, Team team) {
 		super();
-		this.id = id;
 		this.nom = nom;
 		this.pouvoir = pouvoir;
-		this.team = team;
-
-
+		
 	}
 
 	public long getId() {
@@ -741,11 +743,6 @@ public class Hero implements Serializable {
 	}
 
 
-	public Team getTeam() {
-		return team;
-	}
-
-	
 	@Override
 	public String toString() {
 		return "Hero [id=" + id + ", nom=" + nom + ", pouvoir=" + pouvoir + ']';
@@ -753,4 +750,90 @@ public class Hero implements Serializable {
 
 }
 
+
+Grace aux annotations, nos deux classes sont liées au niveau DB. Il va falloir maintenant mettre en place la logique.
+
+
+# 21-Ajouter/Enlever un héros d'une équipe
+
+Spiderman nous apprends qu'un grand héros à de grandes responsabilités. Cependant, ajouter ou enlever un héros d'une équipe est une responsabilité qui revient à l'entité Equipe, car c'est une entité mére, et les héros des entités filles.
+
+En terme d'usage dans l'application, l'ajout/suppression d'un héros d'une équipe se fera dans la page teams.
+Le TeamController s'occupera de la manipulations des données côté BACK.
+
+Pour l'ajout il attendra une URL de type: ("team/add/*id de l'équipe*/hero/*id du héros*)
+Pour la suppression il attendra une URL de type: ("team/remove/*id de la team*/hero/*id du héros*")
+
+fonction addHeroToTeam dans TeamController:
+
+    @PostMapping("/add/{teamId}/hero/{heroId}")
+    public ResponseEntity<Team> addHeroToTeam(@PathVariable Long teamId,
+                                              @PathVariable Long heroId)
+    {
+        Team team = teamService.addHeroToTeam(teamId, heroId);
+        return new ResponseEntity<>(team, HttpStatus.OK);
+    }
+
+fonction addHeroToTeam dans TeamService:
+
+      public Team addHeroToTeam(Long teamId, Long heroId){
+        Team team = this.findTeamById(teamId);
+        Hero hero = HeroService.findHeroById(heroId);
+
+        team.addHero(hero);
+
+        TeamRepository.save(team);
+
+        return team;
+    }
+On ne fait pas de demande qui n'existe pas déja au sein de TeamRepository, on fait juste un save().
+
+A noter, le team.addHero(hero) qui va se charger d'ajouter un héros dans le tableau de héros de la classe Team, qu'on a créé.
+il faut par contre creer la méthode, trés simplement:
+
+fonction addHero de la classe Team:
+
+      public void addHero(Hero hero){
+        this.heroList.add(hero);
+      }
+
+
+
+
+
+---
+
+Pour la suppression c'est assez smilaire excepté que la requete est de type DELETE au lieu de POST.
+
+fonction removeHeroFromTeam dans TeamController:
+
+    @PostMapping("/add/{teamId}/hero/{heroId}")
+    public ResponseEntity<Team> removeHeroFromTeam(@PathVariable Long teamId,
+                                              @PathVariable Long heroId)
+    {
+        Team team = teamService.removeHeroFromTeam(teamId, heroId);
+        return new ResponseEntity<>(team, HttpStatus.OK);
+    }
+
+fonction removeHeroFromTeam dans TeamService:
+
+      public Team removeHeroFromTeam(Long teamId, Long heroId){
+        Team team = this.findTeamById(teamId);
+        Hero hero = HeroService.findHeroById(heroId);
+
+        team.removeHero(hero);
+
+        TeamRepository.save(team);
+
+        return team;
+    }
+
+Ajoutons la méthode removeHero dans la classe Hero:
+
+
+      public void removeHero(Hero hero){
+        this.heroList.add(hero);
+      }
+
+Ainsi quand le FRONT enverra une requete d'ajout de héros dans une équipe, sa ligne correspondante en DB sera mise à jour, avec une id dans sa colonne team_id qui fera réference à l'id de l'équipe qui l'acceuil à présent.
 
