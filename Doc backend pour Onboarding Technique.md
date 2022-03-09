@@ -23,6 +23,8 @@
 - [17-Attention ça se "**CORS**"](#17)
 - [18-Aller plus loin](#18)
 - [19-JPA à la rescousse!](#19)
+- [20-Mise à jour des entités Team et Hero](#20)
+- [21-Ajouter/Enlever un héros d'une équipe](#21)
 
 ---
 
@@ -835,5 +837,5 @@ Ajoutons la méthode removeHero dans la classe Hero:
         this.heroList.add(hero);
       }
 
-Ainsi quand le FRONT enverra une requete d'ajout de héros dans une équipe, sa ligne correspondante en DB sera mise à jour, avec une id dans sa colonne team_id qui fera réference à l'id de l'équipe qui l'acceuil à présent.
+Ainsi quand le FRONT enverra une requête d'ajout de héros dans une équipe, sa ligne correspondante en DB sera mise à jour, avec une id dans sa colonne team_id qui fera réference à l'id de l'équipe qui l'acceuil à présent.
 
